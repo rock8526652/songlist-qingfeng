@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>系统登录</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            /* 登录页单独的背景样式，或者复用全局的 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .auth-container {
+            background: rgba(255, 255, 255, 0.95);
+            width: 350px;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .tabs { display: flex; justify-content: center; margin-bottom: 20px; border-bottom: 1px solid #eee; }
+        .tab-item { padding: 10px 20px; cursor: pointer; color: #888; font-weight: bold; transition: all 0.3s; }
+        .tab-item.active { color: #ff69b4; border-bottom: 2px solid #ff69b4; }
+        .tab-item:hover { color: #ff85c2; }
+        
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        
+        .btn-primary { width: 100%; padding: 12px; background: #ff69b4; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 15px; transition: background 0.2s; }
+        .btn-primary:hover { background: #ff85c2; }
+
+        /* 注册专属字段的样式 */
+        .register-only {
+            text-align: left;
+            border-top: 1px dashed #eee;
+            margin-top: 10px;
+            padding-top: 10px;
+            display: none; /* 默认隐藏 */
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="tabs">
+            <div class="tab-item active" onclick="switchTab('login')">登录</div>
+            <div class="tab-item" onclick="switchTab('register')">注册新账号</div>
+        </div>
+
+        <h3 id="formTitle" style="color:#333; margin-bottom:20px;">管理员登录</h3>
+        
+        <input type="text" id="user" placeholder="用户名 (登录账号)">
+        <input type="password" id="pass" placeholder="密码">
+        
+        <div id="registerFields" class="register-only">
+            <p style="font-size:12px; color:#666; margin: 5px 0;">👇 设置你的专属链接</p>
+            <div class="input-group">
+                <input type="text" id="subdomain" placeholder="lisa" style="margin:0; text-align:right;">
+                <span style="color:#888; font-size:14px; white-space: nowrap;">.songlist.icu</span>
+            </div>
+            
+            <p style="font-size:12px; color:#666; margin: 10px 0 5px;">👇 主页显示的名称</p>
+            <input type="text" id="displayName" placeholder="主播昵称 (如: Lisa_Official)">
+        </div>
+
+        <button class="btn-primary" id="actionBtn" onclick="handleAuth()">登录</button>
+        <p id="msg" style="color: red; margin-top: 10px; font-size: 13px; min-height: 20px;"></p>
+    </div>
+
+    <script>
+        let isLoginMode = true;
+
+        // 切换 登录/注册 模式
+        function switchTab(mode) {
+            isLoginMode = (mode === 'login');
+            
+            // 切换 Tab 样式
+            const tabs = document.querySelectorAll('.tab-item');
+            tabs[0].className = isLoginMode ? 'tab-item active' : 'tab-item';
+            tabs[1].className = !isLoginMode ? 'tab-item active' : 'tab-item';
+            
+            // 切换标题和按钮文字
+            document.getElementById('formTitle').innerText = isLoginMode ? "管理员登录" : "注册新账号";
+            document.getElementById('actionBtn').innerText = isLoginMode ? "登录" : "立即注册";
+            document.getElementById('msg').innerText = "";
+
+            // 显示或隐藏注册专用字段
+            const regFields = document.getElementById('registerFields');
+            if (isLoginMode) {
+                regFields.style.display = 'none';
+                regFields.classList.remove('fade-in');
+            } else {
+                regFields.style.display = 'block';
+                // 加个简单的淡入动画效果(可选)
+                regFields.style.opacity = 0;
+                setTimeout(() => regFields.style.opacity = 1, 10);
+                regFields.style.transition = 'opacity 0.3s';
+            }
+        }
+
+        async function handleAuth() {
+            const username = document.getElementById('user').value;
+            const password = document.getElementById('pass').value;
+            const msg = document.getElementById('msg');
+            const btn = document.getElementById('actionBtn');
+            
+            // 获取注册专用字段
+            const subdomain = document.getElementById('subdomain').value;
+            const displayName = document.getElementById('displayName').value;
+
+            // 简单校验
+            if (!username || !password) {
+                msg.innerText = "请输入账号和密码";
+                return;
+            }
+            if (!isLoginMode && !subdomain) {
+                msg.innerText = "注册必须填写专属域名后缀";
+                return;
+            }
+
+            const endpoint = isLoginMode ? '/api/login' : '/api/register';
+            
+            // 构建发送给后端的数据
+            const payload = { username, password };
+            if (!isLoginMode) {
+                payload.subdomain = subdomain;
+                payload.display_name = displayName;
+            }
+
+            // 按钮防抖
+            btn.disabled = true;
+            btn.innerText = "处理中...";
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    if (isLoginMode) {
+                        // === 登录成功 ===
+                        // data.subdomain 是后端返回的，例如 'lisa'
+                        // 我们判断一下，如果当前访问的域名已经是正确的，就直接跳 admin.html
+                        // 如果是在主域名登录的，就帮他跳到子域名去
+                        
+                        const currentHost = window.location.host; // 例如 songlist.icu 或 lisa.songlist.icu
+                        const targetSubdomain = data.subdomain;
+                        
+                        // 简单的判断：如果当前域名不包含这个子域名，就跳转
+                        // 注意：本地 localhost 开发时，不需要跳域名，直接进
+                        if (currentHost.includes('localhost') || currentHost.includes('127.0.0.1')) {
+                            window.location.href = '/admin.html';
+                        } else if (!currentHost.startsWith(targetSubdomain + '.')) {
+                            // 跳转到专属域名 (假设主域名是 songlist.icu)
+                            // 这里我们需要知道主域名是什么，简单做法是取当前域名的后半段，或者写死
+                            // 比较稳妥的方式是让后端返回完整 URL，这里演示简单的拼接
+                            const mainDomain = 'songlist.icu'; 
+                            window.location.href = `http://${targetSubdomain}.${mainDomain}/admin.html`;
+                        } else {
+                            // 已经是子域名了，直接进
+                            window.location.href = '/admin.html';
+                        }
+
+                    } else {
+                        // === 注册成功 ===
+                        alert('注册成功！快去登录吧~');
+                        switchTab('login');
+                        // 自动填入刚才注册的账号
+                        document.getElementById('user').value = username;
+                        document.getElementById('pass').value = password;
+                    }
+                } else {
+                    msg.innerText = data.error || '操作失败';
+                }
+            } catch (err) {
+                console.error(err);
+                msg.innerText = "网络错误，请稍后再试";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = isLoginMode ? "登录" : "立即注册";
+            }
+        }
+        
+        // 回车键支持
+        document.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleAuth(); });
+    </script>
+</body>
+</html>

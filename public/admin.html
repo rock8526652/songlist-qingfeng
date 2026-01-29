@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>歌单后台管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { display: block !important; height: auto !important; padding: 20px; overflow-y: auto; background-image: none !important; background-color: #f4f4f4; }
+        .admin-header { display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.95); padding: 15px 30px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .admin-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; max-width: 1400px; margin: 0 auto; align-items: start; }
+        @media (max-width: 850px) { .admin-layout { grid-template-columns: 1fr; } }
+        .main-column, .side-column { display: flex; flex-direction: column; gap: 20px; }
+        .card { background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .list-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #eb6cc9; transition: background 0.2s; color: #333; }
+        .list-row:hover { background: #fa8cf4; }
+        input, textarea { width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+        .action-link { cursor: pointer; color: #ff69b4; margin-left: 15px; font-weight: bold; text-decoration: underline; }
+        .modal-bg { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; }
+        .pass-box { background: white; padding: 30px; border-radius: 10px; width: 300px; text-align: center; }
+        #adminList { max-height: 600px; overflow-y: auto; }
+        .btn-pink { background:#ff69b4; color:white; padding:10px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; }
+        .btn-green { background:#4CAF50; color:white; padding:10px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; }
+        .btn-blue { background:#1890ff; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer; font-size:12px; margin-bottom: 15px; }
+        label { font-size:12px; font-weight:bold; display:block; margin-bottom:5px; }
+    </style>
+</head>
+<body>
+
+    <div class="admin-header">
+        <h2 style="margin:0; color:#333;">后台管理系统</h2>
+        <div>
+            <span class="action-link" onclick="openPassModal()">修改密码</span>
+            <a href="/api/logout" class="action-link" style="color: #ff4d4f;">退出登录</a>
+        </div>
+    </div>
+
+    <div class="admin-layout">
+        <div class="main-column">
+            <div class="card">
+                <h3 style="margin-top:0; border-bottom: 1px solid #eee; padding-bottom: 10px;">新增歌曲 (单首)</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <input type="text" id="title" placeholder="歌曲名称 (必填)" style="flex: 2;">
+                    <input type="text" id="category" placeholder="分类 (如: 流行)" style="flex: 1;">
+                </div>
+                <input type="text" id="url" placeholder="切片视频 URL (选填, B站链接)">
+                <button onclick="addSong()" class="btn-pink" style="width:100%; font-size: 16px;">✨ 添加歌曲</button>
+            </div>
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin:0">现有歌曲列表</h3>
+                    <button onclick="loadAdminList()" style="color: #1890ff; border:none; background:none; cursor:pointer;">🔄 刷新</button>
+                </div>
+                <div id="adminList">加载中...</div>
+            </div>
+        </div>
+
+        <div class="side-column">
+            <div class="card">
+                <h3 style="margin-top:0; color: #4CAF50;">批量导入 (Excel)</h3>
+                <input type="file" id="excelFile" accept=".xlsx, .xls">
+                <button onclick="uploadExcel()" id="uploadBtn" class="btn-green" style="width:100%;">📂 开始上传</button>
+                <div style="margin-top:15px; text-align:center; border-top: 1px solid #eee; padding-top: 10px;">
+                    <a href="#" onclick="downloadTemplate()" style="font-size:12px; color:#1890ff; text-decoration: none;">⬇️ 下载导入模板</a>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 20px; border-top: 4px solid #ff69b4;">
+                <h3 style="margin-top:0; color: #ff69b4;">🎨 装修我的主页</h3>
+                
+                <label>主播显示名称</label>
+                <input type="text" id="settingName" placeholder="如: Lisa老婆">
+                
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <div style="flex:1;">
+                        <label>主题色 (主色调)</label>
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <input type="color" id="settingColor" style="height:30px; width:50px; padding:0; border:none;">
+                            <span id="colorVal" style="font-size:10px; color:#888;"></span>
+                        </div>
+                    </div>
+                    <div style="flex:1;">
+                        <label>按钮色 (箭头指的)</label>
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <input type="color" id="settingBtnColor" style="height:30px; width:50px; padding:0; border:none;">
+                            <span id="btnColorVal" style="font-size:10px; color:#888;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <label>头像设置</label>
+                <div style="display:flex; gap: 5px;">
+                    <input type="text" id="settingAvatar" placeholder="图片链接" style="flex:1;">
+                    <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="uploadImage('avatarFile', 'settingAvatar')">
+                    <button onclick="document.getElementById('avatarFile').click()" class="btn-blue">上传</button>
+                </div>
+
+                <label>背景图片设置</label>
+                <div style="display:flex; gap: 5px;">
+                    <input type="text" id="settingBg" placeholder="背景图链接" style="flex:1;">
+                    <input type="file" id="bgFile" accept="image/*" style="display:none" onchange="uploadImage('bgFile', 'settingBg')">
+                    <button onclick="document.getElementById('bgFile').click()" class="btn-blue">上传</button>
+                </div>
+
+                <label>"返回顶部"图标 (圆圈部分)</label>
+                <div style="display:flex; gap: 5px;">
+                    <input type="text" id="settingTopIcon" placeholder="图标链接" style="flex:1;">
+                    <input type="file" id="topIconFile" accept="image/*" style="display:none" onchange="uploadImage('topIconFile', 'settingTopIcon')">
+                    <button onclick="document.getElementById('topIconFile').click()" class="btn-blue">上传</button>
+                </div>
+
+                <label>个人介绍</label>
+                <textarea id="settingIntro" rows="3" placeholder="大家好，我是..."></textarea>
+                
+                <label>B站链接</label>
+                <input type="text" id="settingBiliSpace" placeholder="个人空间 URL">
+                <input type="text" id="settingBiliLive" placeholder="直播间 URL">
+
+                <button onclick="saveSettings()" id="saveBtn" class="btn-pink" style="width:100%;">💾 保存装修设置</button>
+            </div>
+            <div class="card" style="text-align: center; color: #888; font-size: 12px;"><p>Designed by songlist-qingfeng</p></div>
+        </div>
+    </div> 
+
+    <div id="passModal" class="modal-bg">
+        <div class="pass-box">
+            <h3>修改密码</h3>
+            <input type="password" id="newPass" placeholder="请输入新密码">
+            <button onclick="changePassword()" class="btn-pink" style="width:100%;">确认修改</button>
+            <button onclick="closePassModal()" style="background:#ccc; color:#333; padding:10px; width:100%; border:none; border-radius:5px; cursor:pointer; margin-top:10px;">取消</button>
+        </div>
+    </div>
+
+    <script>
+        // 通用图片上传
+        async function uploadImage(fileId, inputId) {
+            const fileInput = document.getElementById(fileId);
+            const targetInput = document.getElementById(inputId);
+            const file = fileInput.files[0];
+            if(!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const oldVal = targetInput.value;
+            targetInput.value = "上传中...";
+
+            try {
+                const res = await fetch('/api/upload-image', { method: 'POST', body: formData });
+                const data = await res.json();
+                if(res.ok) { targetInput.value = data.url; } 
+                else { alert('上传失败'); targetInput.value = oldVal; }
+            } catch(e) { alert('网络错误'); targetInput.value = oldVal; }
+        }
+
+        async function loadSettings() {
+            try {
+                const res = await fetch('/api/site-info');
+                const data = await res.json();
+                document.getElementById('settingName').value = data.display_name || '';
+                document.getElementById('settingAvatar').value = data.avatar_url || '';
+                document.getElementById('settingIntro').value = data.intro || '';
+                document.getElementById('settingColor').value = data.theme_color || '#fc9ee0';
+                document.getElementById('colorVal').innerText = data.theme_color || '';
+                
+                document.getElementById('settingBtnColor').value = data.button_color || data.theme_color || '#fc9ee0';
+                document.getElementById('settingBg').value = data.background_url || '';
+                document.getElementById('settingTopIcon').value = data.back_to_top_url || '';
+
+                document.getElementById('settingBiliSpace').value = data.bili_space_url || '';
+                document.getElementById('settingBiliLive').value = data.bili_live_url || '';
+                
+                if(data.theme_color) document.querySelectorAll('.btn-pink').forEach(b => b.style.backgroundColor = data.theme_color);
+            } catch(e) { console.error('加载设置失败', e); }
+        }
+
+        async function saveSettings() {
+            const btn = document.getElementById('saveBtn');
+            btn.innerText = '保存中...'; btn.disabled = true;
+            const payload = {
+                display_name: document.getElementById('settingName').value,
+                avatar_url: document.getElementById('settingAvatar').value,
+                intro: document.getElementById('settingIntro').value,
+                theme_color: document.getElementById('settingColor').value,
+                bili_space_url: document.getElementById('settingBiliSpace').value,
+                bili_live_url: document.getElementById('settingBiliLive').value,
+                // 新字段
+                background_url: document.getElementById('settingBg').value,
+                button_color: document.getElementById('settingBtnColor').value,
+                back_to_top_url: document.getElementById('settingTopIcon').value
+            };
+            try {
+                const res = await fetch('/api/site-info', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+                if(res.ok) { alert('装修保存成功！'); } else { alert('保存失败'); }
+            } catch(e) { alert('网络错误'); } finally { btn.innerText = '💾 保存装修设置'; btn.disabled = false; }
+        }
+
+        // 其他函数保持不变
+        async function loadAdminList() {
+            try {
+                const res = await fetch('/api/songs');
+                if (res.status === 401 || res.redirected) { window.location.href = '/login.html'; return; }
+                const songs = await res.json();
+                const container = document.getElementById('adminList');
+                container.innerHTML = '';
+                if(songs.length === 0) { container.innerHTML = '<div style="text-align:center; color:#ccc; padding:20px;">暂无歌曲</div>'; return; }
+                songs.forEach(song => {
+                    const div = document.createElement('div');
+                    div.className = 'list-row';
+                    div.innerHTML = `<div style="flex:1; display:flex; align-items:center; gap: 10px;"><span style="font-weight:bold; font-size: 15px; color: #333;">${song.title}</span><span style="font-size:12px; background:#f0f0f0; padding: 2px 6px; border-radius: 4px; color:#666;">${song.category || '默认'}</span>${song.video_url ? '<a href="'+song.video_url+'" target="_blank" style="font-size:12px; color:#4CAF50; text-decoration:none;">📺 切片</a>' : ''}</div><button onclick="deleteSong(${song.id})" style="background:#ff4d4f; color:white; border:none; padding:6px 15px; border-radius:4px; cursor:pointer; font-size: 12px;">删除</button>`;
+                    container.appendChild(div);
+                });
+            } catch(e) { console.error(e); }
+        }
+        async function addSong() {
+            const title = document.getElementById('title').value; const category = document.getElementById('category').value; const video_url = document.getElementById('url').value;
+            if(!title) return alert('歌名必填');
+            const res = await fetch('/api/songs', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, category, video_url }) });
+            if(res.ok) { document.getElementById('title').value = ''; document.getElementById('url').value = ''; loadAdminList(); } else { alert('添加失败'); }
+        }
+        async function deleteSong(id) { if(confirm('确定删除吗？')) { await fetch(`/api/songs/${id}`, { method: 'DELETE' }); loadAdminList(); } }
+        async function uploadExcel() {
+            const fileInput = document.getElementById('excelFile'); const file = fileInput.files[0]; const btn = document.getElementById('uploadBtn');
+            if (!file) return alert('请先选择文件！');
+            const formData = new FormData(); formData.append('file', file);
+            btn.innerText = '⏳...'; btn.disabled = true;
+            try { const res = await fetch('/api/upload-excel', { method: 'POST', body: formData }); const data = await res.json(); if (res.ok) { alert(`成功导入 ${data.count} 首`); fileInput.value = ''; loadAdminList(); } else { alert('失败: ' + data.error); } } catch (err) { alert('错误'); } finally { btn.innerText = '📂 开始上传'; btn.disabled = false; }
+        }
+        function downloadTemplate() {
+            const data = [["SC价格", "歌名", "歌手", "分类", "歌切链接", "标签"], [300, "测试", "测试", "流行", "", ""]];
+            const ws = XLSX.utils.aoa_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "模板"); XLSX.writeFile(wb, "模板.xlsx");
+        }
+        function openPassModal() { document.getElementById('passModal').style.display = 'flex'; }
+        function closePassModal() { document.getElementById('passModal').style.display = 'none'; }
+        async function changePassword() {
+            const newPassword = document.getElementById('newPass').value; if(!newPassword) return alert('密码为空');
+            const res = await fetch('/api/change-password', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ newPassword }) });
+            if(res.ok) { alert('修改成功'); closePassModal(); } else { alert('失败'); }
+        }
+        
+        // 颜色监听
+        document.getElementById('settingColor').addEventListener('input', (e) => document.getElementById('colorVal').innerText = e.target.value);
+        document.getElementById('settingBtnColor').addEventListener('input', (e) => document.getElementById('btnColorVal').innerText = e.target.value);
+
+        loadSettings();
+        loadAdminList();
+    </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>歌单</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="main-container">
+        <div class="header-row">
+            <img src="avatar.jpg" alt="Hallu" class="avatar" id="avatarBtn">
+            <div class="name-title">哈鹿hallu-</div>
+            <div class="sub-title" id="songCountText">带来了她的 0 首歌~</div>
+            <div class="sub-title" style="font-size: 1rem;">~点击头像查看主播信息~</div>
+            <div class="sub-title" style="font-size: 1rem;">~双击列表即可复制点歌指令~</div>
+        </div>
+
+        <div class="tags-row">
+            <span class="tag" onclick="fillSearch('流行')">流行</span>
+            <span class="tag" onclick="fillSearch('古风')">古风</span>
+            <span class="tag" onclick="fillSearch('日语')">日语</span>
+            <span class="tag" onclick="fillSearch('英文')">英文</span>
+        </div>
+
+        <div class="tags-row" id="charCountRow" style="margin-top: 10px;"></div>
+
+        <div class="search-row">
+            <div class="search-input-wrapper">
+                <input type="text" id="search" placeholder="输入关键字看看有没有你想听的？">
+            </div>
+            <button class="random-btn" id="randomBtn">🔄 随机一个</button>
+        </div>
+
+        <div class="song-list" id="songContainer"></div>
+    </div>
+
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-title">~<span id="modalTitleName">主播</span> 2025置顶更新~</div>
+            <div id="modalIntro" style="margin-bottom: 20px; line-height: 1.6;"></div>
+            <div class="btn-group">
+                <a href="#" target="_blank" class="bili-btn" id="biliSpaceBtn">
+                    <img src="https://www.bilibili.com/favicon.ico" alt="bili"><span>B站个人空间</span>
+                </a>
+                <a href="#" target="_blank" class="bili-btn" id="biliLiveBtn">
+                    <img src="https://www.bilibili.com/favicon.ico" alt="bili"><span>B站直播间</span>
+                </a>
+            </div>
+            <div style="text-align: center; font-size: 12px; color: #999; margin-top: 15px;">Power by songlist-qingfeng</div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast toast-success"></div>
+
+    <div id="backToTop" class="back-to-top">
+        <img id="backToTopImg" src="" alt="TOP">
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
