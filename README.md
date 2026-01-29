@@ -57,7 +57,9 @@ pnpm install
 pnpm start
 # 或者
 node server.js
+```
 服务默认运行在 **3000** 端口。
+
 
 ### 3. 本地开发指南
 由于系统依赖**子域名**来识别租户，在本地 (`localhost`) 调试时：
@@ -141,4 +143,5 @@ server {
 ---
 
 ### License
+
 MIT
